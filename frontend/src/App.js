@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import TinderApp from './components/TinderApp';
 import { uploadClothingItem, tagClothingImage, getSimilarItems } from './utils/api';
 import ImageUpload from './components/ImageUpload';
 import DetectedTags from './components/DetectedTags';
 import Recommendations from './components/Recommendations';
 
 function App() {
+  const [mode, setMode] = useState('tinder'); // 'tinder' or 'upload'
   const [image, setImage] = useState(null);
   const [detectedItems, setDetectedItems] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
@@ -27,33 +29,66 @@ function App() {
     }
   };
 
+  if (mode === 'tinder') {
+    return <TinderApp />;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-      <h1 className="text-2xl font-bold mb-4">Clothing Recommender</h1>
-
-      <ImageUpload setImage={setImage} />
-
-      {/* Add a button for uploading the image */}
-      <button 
-        onClick={handleUpload} 
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
-      >
-        Upload and Get Recommendations
-      </button>
-
-      {error && (
-        <div className="mt-6 text-red-600 font-semibold">
-          <p>{error}</p>
+    <div className="min-h-screen bg-gray-100">
+      {/* Mode Toggle */}
+      <div className="bg-white shadow-sm p-4">
+        <div className="max-w-4xl mx-auto flex justify-center gap-4">
+          <button
+            onClick={() => setMode('tinder')}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              mode === 'tinder'
+                ? 'bg-pink-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            🎯 Style Swiper
+          </button>
+          <button
+            onClick={() => setMode('upload')}
+            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              mode === 'upload'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            📤 Upload & Analyze
+          </button>
         </div>
-      )}
+      </div>
 
-      {detectedItems.length > 0 && (
-        <DetectedTags detectedItems={detectedItems} />
-      )}
+      {/* Upload Mode Content */}
+      <div className="flex flex-col items-center p-6">
+        <h1 className="text-2xl font-bold mb-4">Clothing Recommender</h1>
 
-      {recommendations.length > 0 && (
-        <Recommendations recommendations={recommendations} />
-      )}
+        <ImageUpload setImage={setImage} />
+
+        {/* Add a button for uploading the image */}
+        <button 
+          onClick={handleUpload} 
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          Upload and Get Recommendations
+        </button>
+
+        {error && (
+          <div className="mt-6 text-red-600 font-semibold">
+            <p>{error}</p>
+          </div>
+        )}
+
+        {detectedItems.length > 0 && (
+          <DetectedTags detectedItems={detectedItems} />
+        )}
+
+        {recommendations.length > 0 && (
+          <Recommendations recommendations={recommendations} />
+        )}
+      </div>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes.clothing_routes import router as clothing_router
-from backend.app.models.clip_model import CLIPModel
-from backend.app.models.recommender import generate_recommendations
-from backend.app.config.database import init_db, close_db
-from backend.app.config.settings import settings
+from .routes.clothing_routes import router as clothing_router
+from .models.clip_model import CLIPModel
+from .models.recommender import generate_recommendations
+from .config.database import init_db, close_db
+from .config.settings import settings
 import uvicorn
 
 class MCPServer:

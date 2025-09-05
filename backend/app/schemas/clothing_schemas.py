@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 from bson import ObjectId
 
@@ -66,3 +66,66 @@ class UploadClothingItemResponse(BaseModel):
 
 class TagResponse(BaseModel):
     tags: List[str]
+
+
+# --------------------------
+# User and Swiping Schemas
+# --------------------------
+class User(BaseModel):
+    id: Optional[PyObjectId] = Field(alias="_id")
+    username: str
+    email: str
+    preferences: Dict[str, float] = Field(default_factory=dict)  # tag -> preference score
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    last_active: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class Swipe(BaseModel):
+    id: Optional[PyObjectId] = Field(default=None, alias="_id")
+    user_id: str
+    clothing_item_id: str
+    action: str  # "like" or "dislike"
+    timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+
+class SwipeRequest(BaseModel):
+    user_id: str
+    clothing_item_id: str
+    action: str  # "like" or "dislike"
+
+
+class SwipeResponse(BaseModel):
+    success: bool
+    message: str
+    next_item: Optional[Dict] = None
+
+
+class UserPreferences(BaseModel):
+    user_id: str
+    preferences: Dict[str, float]
+    total_swipes: int
+    likes: int
+    dislikes: int
+
+
+class FeedItem(BaseModel):
+    id: str
+    filename: str
+    tags: List[str]
+    similarity_score: Optional[float] = None
+    reason: Optional[str] = None  # Why this item was recommended
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    email: str
