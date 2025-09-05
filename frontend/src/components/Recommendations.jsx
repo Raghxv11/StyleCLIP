@@ -11,7 +11,14 @@ function Recommendations({ recommendations }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {recommendations.map((item) => (
           <div key={item.id} className="border rounded p-3">
-            <div className="font-medium text-sm mb-2">{item.filename}</div>
+            {item.filename && (
+              <img
+                src={`http://localhost:8000/uploads/${item.filename}`}
+                alt={item.filename}
+                className="w-full h-48 object-cover rounded mb-2"
+              />
+            )}
+            <div className="font-medium text-sm mb-2 break-words">{item.filename}</div>
             <div className="text-xs text-gray-600 mb-2">
               Similarity: {(item.similarity * 100).toFixed(1)}%
             </div>

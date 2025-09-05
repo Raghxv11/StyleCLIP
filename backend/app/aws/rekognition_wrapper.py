@@ -1,8 +1,9 @@
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from typing import List, Dict
+from backend.app.config.settings import settings
 
-rekognition = boto3.client("rekognition")
+rekognition = boto3.client("rekognition", region_name=settings.AWS_REGION)
 
 def detect_garments(image_bytes: bytes, max_labels=10) -> List[Dict]:
     try:

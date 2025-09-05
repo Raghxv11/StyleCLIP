@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.routes.clothing_routes import router as clothing_router
 from backend.app.models.clip_model import CLIPModel
@@ -36,6 +37,9 @@ clip_model = CLIPModel()
 
 mcp = MCPServer(app)
 
+# Serve uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 @app.on_event("startup")
 async def startup_db():
     await init_db()
@@ -64,4 +68,11 @@ def get_style_recommendations(style: str, user_id: str):
 
 if __name__ == "__main__":
     print(f"Starting MCPServer on port {settings.PORT}")
-    uvicorn.run("backend.app.server:app", host="0.0.0.0", port=settings.PORT, reload=True)
+    uvicorn.run(
+        "backend.app.server:app",
+        host="0.0.0.0",
+        port=settings.PORT,
+        reload=True,
+        reload_includes=["backend", "fastmcp"],
+        reload_excludes=["uploads", "temp_uploads"],
+    )

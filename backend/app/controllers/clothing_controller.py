@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 import uuid
 import torch
@@ -17,6 +18,8 @@ from backend.app.config.database import get_db
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+TEMP_UPLOAD_DIR = "temp_uploads"
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 
 clip_model = CLIPModel()
 tag_extractor = TagExtractor(tag_dict=GARMENT_TYPES)
@@ -41,11 +44,15 @@ async def find_similar_clothing(embedding: torch.Tensor, limit: int = 5):
 
 async def handle_upload_clothing_item(payload: UploadClothingItemRequest) -> UploadClothingItemResponse:
     image_data = base64.b64decode(payload.image_base64)
-    filename = payload.filename or f"{uuid.uuid4().hex}.jpg"
+    # Use content hash to avoid duplicate files
+    digest = hashlib.sha256(image_data).hexdigest()
+    ext = os.path.splitext(payload.filename)[1].lower() if payload.filename and os.path.splitext(payload.filename)[1] else ".jpg"
+    filename = f"{digest}{ext}"
     image_path = os.path.join(UPLOAD_DIR, filename)
 
-    with open(image_path, "wb") as f:
-        f.write(image_data)
+    if not os.path.exists(image_path):
+        with open(image_path, "wb") as f:
+            f.write(image_data)
 
     try:
         # Step 1: Get embedding
@@ -86,7 +93,7 @@ async def handle_upload_clothing_item(payload: UploadClothingItemRequest) -> Upl
 async def handle_tag_request(payload: TagRequest) -> TagResponse:
     image_data = base64.b64decode(payload.image_base64)
     temp_filename = f"temp_{uuid.uuid4().hex}.jpg"
-    image_path = os.path.join(UPLOAD_DIR, temp_filename)
+    image_path = os.path.join(TEMP_UPLOAD_DIR, temp_filename)
 
     with open(image_path, "wb") as f:
         f.write(image_data)
@@ -102,7 +109,20 @@ async def handle_tag_request(payload: TagRequest) -> TagResponse:
             tags = ["Unknown garment type"]
             print(f"Debug TAG endpoint - Unknown garment, returning: {tags}")
     except Exception as e:
+        # Cleanup temp file on error as well
+        try:
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+    # Cleanup temp file after successful tagging
+    try:
+        if os.path.exists(image_path):
+            os.remove(image_path)
+    except Exception:
+        pass
 
     return TagResponse(tags=tags)
 
@@ -125,6 +145,15 @@ async def get_similar_items(item_id: str, limit: int = 5):
         recommendations = []
         for item, similarity in similar_items:
             if str(item['_id']) != item_id:  # Exclude the original item
+                image_path = item.get('image_path')
+                # Skip items whose image file no longer exists on disk
+                if not image_path or not os.path.exists(image_path):
+                    # Best-effort cleanup of orphaned DB record
+                    try:
+                        await db.clothing_items.delete_one({"_id": item["_id"]})
+                    except Exception:
+                        pass
+                    continue
                 recommendations.append({
                     "id": str(item['_id']),
                     "filename": item['filename'],
@@ -133,6 +162,26 @@ async def get_similar_items(item_id: str, limit: int = 5):
                 })
         
         return recommendations[:limit]
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding similar items: {str(e)}")
+
+async def cleanup_orphan_images() -> dict:
+    """Remove DB documents whose image files no longer exist on disk."""
+    try:
+        db = await get_db().__anext__()
+        cursor = db.clothing_items.find({})
+        checked = 0
+        deleted = 0
+        async for item in cursor:
+            checked += 1
+            image_path = item.get("image_path")
+            if not image_path or not os.path.exists(image_path):
+                try:
+                    await db.clothing_items.delete_one({"_id": item["_id"]})
+                    deleted += 1
+                except Exception:
+                    # Continue on best-effort basis
+                    pass
+        return {"checked": checked, "deleted": deleted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error cleaning orphan images: {str(e)}")

@@ -12,7 +12,8 @@ from backend.app.schemas.clothing_schemas import (
 from backend.app.controllers.clothing_controller import (
     handle_upload_clothing_item,
     handle_tag_request,
-    get_similar_items
+    get_similar_items,
+    cleanup_orphan_images,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,3 +67,11 @@ async def get_similar_clothing(item_id: str, limit: int = 5):
     except Exception as e:
         logger.exception("Error getting similar items")
         raise HTTPException(status_code=500, detail="Failed to find similar items.")
+
+@router.post("/maintenance/cleanup_orphans")
+async def maintenance_cleanup_orphans():
+    try:
+        return await cleanup_orphan_images()
+    except Exception as e:
+        logger.exception("Error cleaning orphan images")
+        raise HTTPException(status_code=500, detail="Failed to cleanup orphan images.")
