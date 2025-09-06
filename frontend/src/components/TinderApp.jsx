@@ -22,9 +22,9 @@ const TinderApp = () => {
       loadNextItem(savedUserId);
     } else {
       // For testing, auto-login with test user
-      setUserId('68bb595b32342cc4cdd5ee61');
+      setUserId('68bb7b291db24322863a52b1');
       setShowLogin(false);
-      loadNextItem('68bb595b32342cc4cdd5ee61');
+      loadNextItem('68bb7b291db24322863a52b1');
     }
   }, []);
 
